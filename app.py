@@ -1,38 +1,20 @@
-from flask import Flask, render_template, request, jsonify, redirect, session
-import requests
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 import sqlite3
-import secrets
+import requests
+import random
+import os
 from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = "supersecretkey123"  # change this in production
+app.secret_key = "supersecretkey"
 
-# -------------------------
-# Quotes List (Dynamic)
-# -------------------------
-quotes = [
-    "Success is built wherever you stand.",
-    "Greatness begins from where you are.",
-    "You are exactly where you need to be.",
-    "Dream big, no matter your location.",
-    "Your journey starts at this very place.",
-    "Push yourself, because no one else will.",
-    "Small steps today create big results tomorrow.",
-    "Stay focused. Stay unstoppable.",
-    "Your destiny is bigger than your doubts.",
-    "Make today powerful.",
-    "Turn your pain into power.",
-    "You are stronger than you think.",
-    "Rise above limitations.",
-    "Work in silence, let success speak.",
-    "Every click is a new beginning."
-]
+DATABASE = "database.db"
 
-# -------------------------
-# Database Initialization
-# -------------------------
+# -----------------------------
+# DATABASE INITIALIZATION
+# -----------------------------
 def init_db():
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS locations (
@@ -46,98 +28,108 @@ def init_db():
     conn.commit()
     conn.close()
 
-# -------------------------
-# User Homepage
-# -------------------------
-@app.route('/')
+# VERY IMPORTANT: Run database creation immediately
+init_db()
+
+# -----------------------------
+# MOTIVATIONAL QUOTES
+# -----------------------------
+quotes = [
+    "Greatness begins where you are.",
+    "Push yourself, because no one else will.",
+    "Dream big. Start small. Act now.",
+    "Success starts with self-belief.",
+    "You are stronger than you think.",
+    "Stay focused. Stay fearless.",
+    "Turn pain into power.",
+    "Make today legendary."
+]
+
+# -----------------------------
+# USER HOME PAGE
+# -----------------------------
+@app.route("/")
 def home():
-    return render_template('index.html')
+    return render_template("index.html")
 
-# -------------------------
-# Get Location Route
-# -------------------------
-@app.route('/get_location', methods=['POST'])
+# -----------------------------
+# LOCATION RECEIVER
+# -----------------------------
+@app.route("/get_location", methods=["POST"])
 def get_location():
-    data = request.json
-    lat = data['latitude']
-    lon = data['longitude']
+    data = request.get_json()
 
-    # Reverse Geocoding using OpenStreetMap
-    url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}"
-    headers = {"User-Agent": "InspireTrackApp"}
+    latitude = data.get("latitude")
+    longitude = data.get("longitude")
 
-    response = requests.get(url, headers=headers)
-    location_data = response.json()
+    # Reverse geocoding using OpenStreetMap
+    address = "Unknown"
+    try:
+        response = requests.get(
+            f"https://nominatim.openstreetmap.org/reverse?format=json&lat={latitude}&lon={longitude}"
+        )
+        location_data = response.json()
+        address = location_data.get("display_name", "Unknown")
+    except:
+        pass
 
-    address = location_data.get("display_name", "Address not found")
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    # Save to Database
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO locations (latitude, longitude, address, timestamp)
-        VALUES (?, ?, ?, ?)
-    """, (lat, lon, address, timestamp))
+    cursor.execute(
+        "INSERT INTO locations (latitude, longitude, address, timestamp) VALUES (?, ?, ?, ?)",
+        (latitude, longitude, address, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    )
     conn.commit()
     conn.close()
 
-    # Generate random quote
-    quote = secrets.choice(quotes)
+    return jsonify({"quote": random.choice(quotes)})
 
-    return jsonify({"quote": quote})
+# -----------------------------
+# ADMIN LOGIN
+# -----------------------------
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "admin123"
 
-# -------------------------
-# Admin Login
-# -------------------------
-@app.route('/admin', methods=['GET', 'POST'])
-def admin():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+@app.route("/admin", methods=["GET", "POST"])
+def admin_login():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
 
-        if username == "admin" and password == "admin123":
-            session['admin'] = True
-            return redirect('/dashboard')
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session["admin"] = True
+            return redirect(url_for("dashboard"))
+        else:
+            return render_template("admin_login.html", error="Invalid credentials")
 
     return render_template("admin_login.html")
 
-# -------------------------
-# Dashboard (Protected)
-# -------------------------
-@app.route('/dashboard')
+# -----------------------------
+# ADMIN DASHBOARD
+# -----------------------------
+@app.route("/dashboard")
 def dashboard():
-    if 'admin' not in session:
-        return redirect('/admin')
+    if not session.get("admin"):
+        return redirect(url_for("admin_login"))
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
-
     cursor.execute("SELECT * FROM locations ORDER BY id DESC")
-    locations = cursor.fetchall()
-
-    cursor.execute("SELECT COUNT(*) FROM locations")
-    total = cursor.fetchone()[0]
-
+    data = cursor.fetchall()
     conn.close()
 
-    return render_template(
-        "dashboard.html",
-        locations=locations,
-        total=total
-    )
+    return render_template("dashboard.html", data=data)
 
-# -------------------------
-# Logout
-# -------------------------
-@app.route('/logout')
+# -----------------------------
+# LOGOUT
+# -----------------------------
+@app.route("/logout")
 def logout():
-    session.pop('admin', None)
-    return redirect('/admin')
+    session.pop("admin", None)
+    return redirect(url_for("admin_login"))
 
-# -------------------------
-# Run App
-# -------------------------
-if __name__ == '__main__':
-    init_db()
-    app.run(debug=True)
+# -----------------------------
+# RENDER PRODUCTION RUN
+# -----------------------------
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
