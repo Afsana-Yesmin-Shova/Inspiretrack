@@ -1,36 +1,58 @@
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>InspireTrack</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
 <div class="container">
-    <h1 class="glow-text">InspireTrack</h1>
+    <h1>InspireTrack</h1>
+
     <button onclick="getLocation()">Click Me</button>
-    <div id="result"></div>
+
+    <p id="quote">✨ Turn pain into power.</p>
 </div>
 
 <script>
 function getLocation() {
-    navigator.geolocation.getCurrentPosition(function(position) {
-       fetch('/get_location?nocache=' + new Date().getTime(), {
 
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude
+    if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        function(position) {
+
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+
+            fetch("/get_location", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    latitude: latitude,
+                    longitude: longitude
+                })
             })
-        })
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('result').innerHTML =
-                "<p class='quote'>✨ " + data.quote + "</p>";
-        });
-    });
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("quote").innerText = "✨ " + data.quote;
+            })
+            .catch(error => {
+                console.error("Error:", error);
+            });
+
+        },
+        function(error) {
+            alert("Please allow location access to continue.");
+            console.error("Geolocation error:", error);
+        }
+    );
 }
 </script>
 
