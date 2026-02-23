@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
-import sqlite3
+import os
+import psycopg2
 import requests
 import random
 from datetime import datetime
@@ -7,17 +8,24 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
-DATABASE = "database.db"
+# Use Render PostgreSQL DATABASE_URL
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+# ---------------------------
+# DATABASE CONNECTION
+# ---------------------------
+def get_db_connection():
+    return psycopg2.connect(DATABASE_URL)
 
 # ---------------------------
 # DATABASE INITIALIZATION
 # ---------------------------
 def init_db():
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute("""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS locations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             latitude TEXT,
             longitude TEXT,
             address TEXT,
@@ -25,11 +33,10 @@ def init_db():
         )
     """)
     conn.commit()
+    cur.close()
     conn.close()
 
-# 🔥 FORCE DATABASE CREATION (WORKS WITH GUNICORN)
-with app.app_context():
-    init_db()
+init_db()
 
 # ---------------------------
 # MOTIVATIONAL QUOTES
@@ -58,7 +65,6 @@ def home():
 @app.route("/get_location", methods=["POST"])
 def get_location():
     data = request.get_json()
-
     latitude = data.get("latitude")
     longitude = data.get("longitude")
 
@@ -74,13 +80,14 @@ def get_location():
     except:
         pass
 
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO locations (latitude, longitude, address, timestamp) VALUES (?, ?, ?, ?)",
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO locations (latitude, longitude, address, timestamp) VALUES (%s, %s, %s, %s)",
         (latitude, longitude, address, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     )
     conn.commit()
+    cur.close()
     conn.close()
 
     return jsonify({"quote": random.choice(quotes)})
@@ -113,13 +120,11 @@ def dashboard():
     if not session.get("admin"):
         return redirect(url_for("admin_login"))
 
-    # Ensure DB exists even after restart
-    init_db()
-
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM locations ORDER BY id DESC")
-    data = cursor.fetchall()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM locations ORDER BY id DESC")
+    data = cur.fetchall()
+    cur.close()
     conn.close()
 
     return render_template("dashboard.html", data=data)
@@ -132,8 +137,5 @@ def logout():
     session.pop("admin", None)
     return redirect(url_for("admin_login"))
 
-# ---------------------------
-# LOCAL RUN
-# ---------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
