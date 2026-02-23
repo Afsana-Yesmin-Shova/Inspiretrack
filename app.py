@@ -8,14 +8,18 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
-# Use Render PostgreSQL DATABASE_URL
+# Get database URL from Render Environment
 DATABASE_URL = os.environ.get("DATABASE_URL")
+
 
 # ---------------------------
 # DATABASE CONNECTION
 # ---------------------------
 def get_db_connection():
+    if not DATABASE_URL:
+        raise ValueError("DATABASE_URL is not set in environment variables.")
     return psycopg2.connect(DATABASE_URL)
+
 
 # ---------------------------
 # DATABASE INITIALIZATION
@@ -36,7 +40,12 @@ def init_db():
     cur.close()
     conn.close()
 
-init_db()
+
+# Initialize DB ONLY when first request comes (safe for Gunicorn)
+@app.before_first_request
+def initialize_database():
+    init_db()
+
 
 # ---------------------------
 # MOTIVATIONAL QUOTES
@@ -52,6 +61,7 @@ quotes = [
     "Make today legendary."
 ]
 
+
 # ---------------------------
 # HOME PAGE
 # ---------------------------
@@ -59,12 +69,14 @@ quotes = [
 def home():
     return render_template("index.html")
 
+
 # ---------------------------
 # RECEIVE LOCATION
 # ---------------------------
 @app.route("/get_location", methods=["POST"])
 def get_location():
     data = request.get_json()
+
     latitude = data.get("latitude")
     longitude = data.get("longitude")
 
@@ -77,8 +89,8 @@ def get_location():
         )
         location_data = response.json()
         address = location_data.get("display_name", "Unknown")
-    except:
-        pass
+    except Exception as e:
+        print("Reverse geocoding error:", e)
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -91,6 +103,7 @@ def get_location():
     conn.close()
 
     return jsonify({"quote": random.choice(quotes)})
+
 
 # ---------------------------
 # ADMIN LOGIN
@@ -112,6 +125,7 @@ def admin_login():
 
     return render_template("admin_login.html")
 
+
 # ---------------------------
 # DASHBOARD
 # ---------------------------
@@ -129,6 +143,7 @@ def dashboard():
 
     return render_template("dashboard.html", data=data)
 
+
 # ---------------------------
 # LOGOUT
 # ---------------------------
@@ -137,5 +152,9 @@ def logout():
     session.pop("admin", None)
     return redirect(url_for("admin_login"))
 
+
+# ---------------------------
+# RUN (Local Only)
+# ---------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
