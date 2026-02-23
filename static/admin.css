@@ -1,0 +1,65 @@
+
+body {
+    margin:0;
+    background:#0f0f0f;
+    font-family:'Poppins',sans-serif;
+    color:gold;
+}
+
+#tsparticles {
+    position:fixed;
+    width:100%;
+    height:100%;
+    z-index:-1;
+}
+
+.login-box, .card, .table-section {
+    backdrop-filter: blur(20px);
+    background: rgba(0,0,0,0.6);
+    border:2px solid gold;
+    border-radius:20px;
+    box-shadow:0 0 25px gold;
+    padding:30px;
+    margin:40px;
+}
+
+.glow-text {
+    text-align:center;
+    text-shadow:0 0 10px gold,0 0 20px #ffcc00;
+}
+
+input, button {
+    display:block;
+    margin:15px auto;
+    padding:12px;
+    border-radius:10px;
+    border:none;
+}
+
+button {
+    background:gold;
+    color:black;
+    cursor:pointer;
+}
+
+button:hover {
+    box-shadow:0 0 20px gold;
+}
+
+table {
+    width:100%;
+    border-collapse:collapse;
+}
+
+th, td {
+    padding:10px;
+    border-bottom:1px solid gold;
+}
+
+.logout-btn {
+    display:block;
+    text-align:center;
+    margin:20px;
+    color:gold;
+    text-decoration:none;
+}

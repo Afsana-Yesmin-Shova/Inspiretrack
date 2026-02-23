@@ -1,0 +1,38 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>InspireTrack</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="container">
+    <h1 class="glow-text">InspireTrack</h1>
+    <button onclick="getLocation()">Click Me</button>
+    <div id="result"></div>
+</div>
+
+<script>
+function getLocation() {
+    navigator.geolocation.getCurrentPosition(function(position) {
+       fetch('/get_location?nocache=' + new Date().getTime(), {
+
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('result').innerHTML =
+                "<p class='quote'>✨ " + data.quote + "</p>";
+        });
+    });
+}
+</script>
+
+</body>
+</html>

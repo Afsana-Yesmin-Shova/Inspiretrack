@@ -1,0 +1,57 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CEO Dashboard</title>
+    <link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+
+<div id="tsparticles"></div>
+
+<div class="main">
+    <h1 class="glow-text">Executive Dashboard</h1>
+    <div class="card">
+        <h3>Total Clicks</h3>
+        <p>{{ total }}</p>
+    </div>
+
+    <div class="table-section">
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Address</th>
+                <th>Latitude</th>
+                <th>Longitude</th>
+                <th>Time</th>
+            </tr>
+            {% for row in locations %}
+            <tr>
+                <td>{{ row[0] }}</td>
+                <td>{{ row[3] }}</td>
+                <td>{{ row[1] }}</td>
+                <td>{{ row[2] }}</td>
+                <td>{{ row[4] }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+
+<a href="/logout" class="logout-btn">Logout</a>
+
+<script src="https://cdn.jsdelivr.net/npm/tsparticles@2/tsparticles.bundle.min.js"></script>
+<script>
+tsParticles.load("tsparticles", {
+  particles: {
+    number: { value: 80 },
+    color: { value: "#ffd700" },
+    size: { value: 2 },
+    move: { enable: true, speed: 1 },
+    opacity: { value: 0.7 }
+  }
+});
+</script>
+
+</body>
+</html>

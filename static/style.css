@@ -1,0 +1,65 @@
+
+body {
+    margin:0;
+    height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-family: 'Poppins', sans-serif;
+
+    background: linear-gradient(
+        135deg,
+        #dff6ff 0%,
+        #bde3ff 25%,
+        #a8d8ff 50%,
+        #cceeff 75%,
+        #eaf8ff 100%
+    );
+
+    background-size: 400% 400%;
+    animation: skyFlow 12s ease infinite;
+}
+
+@keyframes skyFlow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+
+.container {
+    backdrop-filter: blur(15px);
+    background: rgba(0,0,0,0.7);
+    padding:50px;
+    border-radius:20px;
+    border:2px solid #87ceeb;
+    text-align:center;
+    box-shadow:0 0 30px rgba(135,206,235,0.8);
+}
+
+.glow-text {
+    color:gold;
+    text-shadow:0 0 10px gold,0 0 20px #ffcc00;
+}
+
+button {
+    padding:15px 30px;
+    background:black;
+    color:gold;
+    border:none;
+    border-radius:30px;
+    cursor:pointer;
+    transition:0.3s;
+}
+
+button:hover {
+    background:gold;
+    color:black;
+    box-shadow:0 0 20px gold;
+}
+
+.quote {
+    margin-top:20px;
+    font-size:20px;
+    color:gold;
+}
