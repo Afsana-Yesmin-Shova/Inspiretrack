@@ -8,22 +8,13 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
-# Get database URL from Render Environment
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
-# ---------------------------
-# DATABASE CONNECTION
-# ---------------------------
 def get_db_connection():
-    if not DATABASE_URL:
-        raise ValueError("DATABASE_URL is not set in environment variables.")
     return psycopg2.connect(DATABASE_URL)
 
 
-# ---------------------------
-# DATABASE INITIALIZATION
-# ---------------------------
 def init_db():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -41,15 +32,14 @@ def init_db():
     conn.close()
 
 
-# Initialize DB ONLY when first request comes (safe for Gunicorn)
-@app.before_first_request
-def initialize_database():
-    init_db()
+# Initialize DB immediately but safely
+try:
+    if DATABASE_URL:
+        init_db()
+except Exception as e:
+    print("Database init error:", e)
 
 
-# ---------------------------
-# MOTIVATIONAL QUOTES
-# ---------------------------
 quotes = [
     "Greatness begins where you are.",
     "Push yourself, because no one else will.",
@@ -62,17 +52,11 @@ quotes = [
 ]
 
 
-# ---------------------------
-# HOME PAGE
-# ---------------------------
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
-# ---------------------------
-# RECEIVE LOCATION
-# ---------------------------
 @app.route("/get_location", methods=["POST"])
 def get_location():
     data = request.get_json()
@@ -87,10 +71,9 @@ def get_location():
             f"https://nominatim.openstreetmap.org/reverse?format=json&lat={latitude}&lon={longitude}",
             headers={"User-Agent": "InspireTrackApp"}
         )
-        location_data = response.json()
-        address = location_data.get("display_name", "Unknown")
+        address = response.json().get("display_name", "Unknown")
     except Exception as e:
-        print("Reverse geocoding error:", e)
+        print("Geocode error:", e)
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -105,19 +88,14 @@ def get_location():
     return jsonify({"quote": random.choice(quotes)})
 
 
-# ---------------------------
-# ADMIN LOGIN
-# ---------------------------
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin123"
+
 
 @app.route("/admin", methods=["GET", "POST"])
 def admin_login():
     if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-
-        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+        if request.form.get("username") == ADMIN_USERNAME and request.form.get("password") == ADMIN_PASSWORD:
             session["admin"] = True
             return redirect(url_for("dashboard"))
         else:
@@ -126,9 +104,6 @@ def admin_login():
     return render_template("admin_login.html")
 
 
-# ---------------------------
-# DASHBOARD
-# ---------------------------
 @app.route("/dashboard")
 def dashboard():
     if not session.get("admin"):
@@ -144,17 +119,11 @@ def dashboard():
     return render_template("dashboard.html", data=data)
 
 
-# ---------------------------
-# LOGOUT
-# ---------------------------
 @app.route("/logout")
 def logout():
     session.pop("admin", None)
     return redirect(url_for("admin_login"))
 
 
-# ---------------------------
-# RUN (Local Only)
-# ---------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
