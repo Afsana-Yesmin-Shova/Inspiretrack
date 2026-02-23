@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 import sqlite3
 import requests
 import random
-import os
 from datetime import datetime
 
 app = Flask(__name__)
@@ -10,9 +9,9 @@ app.secret_key = "supersecretkey"
 
 DATABASE = "database.db"
 
-# -----------------------------
+# ---------------------------
 # DATABASE INITIALIZATION
-# -----------------------------
+# ---------------------------
 def init_db():
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
@@ -28,12 +27,13 @@ def init_db():
     conn.commit()
     conn.close()
 
-# VERY IMPORTANT: Run database creation immediately
-init_db()
+# 🔥 FORCE DATABASE CREATION (WORKS WITH GUNICORN)
+with app.app_context():
+    init_db()
 
-# -----------------------------
+# ---------------------------
 # MOTIVATIONAL QUOTES
-# -----------------------------
+# ---------------------------
 quotes = [
     "Greatness begins where you are.",
     "Push yourself, because no one else will.",
@@ -45,16 +45,16 @@ quotes = [
     "Make today legendary."
 ]
 
-# -----------------------------
-# USER HOME PAGE
-# -----------------------------
+# ---------------------------
+# HOME PAGE
+# ---------------------------
 @app.route("/")
 def home():
     return render_template("index.html")
 
-# -----------------------------
-# LOCATION RECEIVER
-# -----------------------------
+# ---------------------------
+# RECEIVE LOCATION
+# ---------------------------
 @app.route("/get_location", methods=["POST"])
 def get_location():
     data = request.get_json()
@@ -62,11 +62,12 @@ def get_location():
     latitude = data.get("latitude")
     longitude = data.get("longitude")
 
-    # Reverse geocoding using OpenStreetMap
     address = "Unknown"
+
     try:
         response = requests.get(
-            f"https://nominatim.openstreetmap.org/reverse?format=json&lat={latitude}&lon={longitude}"
+            f"https://nominatim.openstreetmap.org/reverse?format=json&lat={latitude}&lon={longitude}",
+            headers={"User-Agent": "InspireTrackApp"}
         )
         location_data = response.json()
         address = location_data.get("display_name", "Unknown")
@@ -84,9 +85,9 @@ def get_location():
 
     return jsonify({"quote": random.choice(quotes)})
 
-# -----------------------------
+# ---------------------------
 # ADMIN LOGIN
-# -----------------------------
+# ---------------------------
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin123"
 
@@ -104,13 +105,16 @@ def admin_login():
 
     return render_template("admin_login.html")
 
-# -----------------------------
-# ADMIN DASHBOARD
-# -----------------------------
+# ---------------------------
+# DASHBOARD
+# ---------------------------
 @app.route("/dashboard")
 def dashboard():
     if not session.get("admin"):
         return redirect(url_for("admin_login"))
+
+    # Ensure DB exists even after restart
+    init_db()
 
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
@@ -120,16 +124,16 @@ def dashboard():
 
     return render_template("dashboard.html", data=data)
 
-# -----------------------------
+# ---------------------------
 # LOGOUT
-# -----------------------------
+# ---------------------------
 @app.route("/logout")
 def logout():
     session.pop("admin", None)
     return redirect(url_for("admin_login"))
 
-# -----------------------------
-# RENDER PRODUCTION RUN
-# -----------------------------
+# ---------------------------
+# LOCAL RUN
+# ---------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
